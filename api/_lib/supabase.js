@@ -51,30 +51,6 @@ export function isSuperAdminEmail(email) {
   return getAdminEmails().includes(String(email).trim().toLowerCase());
 }
 
-function formatMembership(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    planId: row.plan_id || '',
-    status: row.status || 'inactive',
-    isActive: ['trialing', 'active'].includes(row.status),
-    currentPeriodEnd: row.current_period_end || '',
-    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
-    monthlyCreditsGrantedAt: row.monthly_credits_granted_at || ''
-  };
-}
-
-async function getMembershipForUser(client, userId) {
-  const { data, error } = await client
-    .from('user_memberships')
-    .select('id,plan_id,status,current_period_end,cancel_at_period_end,monthly_credits_granted_at')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return formatMembership(data);
-}
-
 function profilePayloadFromUser(user, existingProfile) {
   const metadata = user.user_metadata || {};
   const email = String(user.email || existingProfile?.email || '').trim().toLowerCase();
@@ -87,25 +63,23 @@ function profilePayloadFromUser(user, existingProfile) {
     email,
     full_name: existingProfile?.full_name || googleName,
     avatar_url: googleAvatar || existingProfile?.avatar_url || null,
-    stripe_customer_id: existingProfile?.stripe_customer_id || null,
     role: existingProfile?.role === 'super_admin' || desiredRole === 'super_admin' ? 'super_admin' : 'user'
   };
 }
 
-export function normalizeProfile(row, membership = null) {
+export function normalizeProfile(row) {
   if (!row) return null;
   return {
     id: row.id,
     email: row.email,
     fullName: row.full_name || '',
     avatarUrl: row.avatar_url || '',
-    stripeCustomerId: row.stripe_customer_id || '',
     role: row.role || 'user',
     isSuperAdmin: row.role === 'super_admin',
-    creditBalance: Number(row.credit_balance || 0),
-    freeGenerationsUsed: Number(row.free_generations_used || 0),
-    freeUsed: Number(row.free_generations_used || 0) >= 1,
-    membership,
+    creditBalance: 0,
+    freeGenerationsUsed: 0,
+    freeUsed: false,
+    membership: null,
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || ''
   };
@@ -131,8 +105,7 @@ export async function ensureProfileForUser(user) {
     .single();
 
   if (error) throw error;
-  const membership = await getMembershipForUser(client, user.id).catch(() => null);
-  return normalizeProfile(data, membership);
+  return normalizeProfile(data);
 }
 
 export async function getProfileById(userId) {
@@ -146,8 +119,7 @@ export async function getProfileById(userId) {
     .maybeSingle();
 
   if (error) throw error;
-  const membership = await getMembershipForUser(client, userId).catch(() => null);
-  return normalizeProfile(data, membership);
+  return normalizeProfile(data);
 }
 
 export async function getAuthContext(req, options = {}) {

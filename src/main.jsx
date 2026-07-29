@@ -1210,10 +1210,6 @@ function GoogleIcon() {
   );
 }
 
-function WatchaIcon() {
-  return <img className="watchaIcon" src={watchaLogoUrl} alt="" aria-hidden="true" loading="lazy" />;
-}
-
 function AuthModal({ open, language, initialErrorCode, onClose }) {
   const t = copy[language];
   const [status, setStatus] = useState('idle');
@@ -1234,7 +1230,7 @@ function AuthModal({ open, language, initialErrorCode, onClose }) {
   if (!open) return null;
 
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const isLoading = status === 'loading-google' || status === 'loading-watcha';
+  const isLoading = status === 'loading-google';
 
   async function handleGoogleSignIn() {
     if (!isSupabaseConfigured || !supabase) {
@@ -1256,18 +1252,6 @@ function AuthModal({ open, language, initialErrorCode, onClose }) {
       setStatus('error');
       setMessage(authErrorMessage(error, language));
     }
-  }
-
-  function handleWatchaSignIn() {
-    if (!isSupabaseConfigured || !supabase) {
-      setStatus('error');
-      setMessage(t.authNotConfigured);
-      return;
-    }
-
-    setStatus('loading-watcha');
-    setMessage('');
-    window.location.assign(`/api/auth/watcha/start?returnTo=${encodeURIComponent(redirectTo)}`);
   }
 
   return (
@@ -1292,10 +1276,6 @@ function AuthModal({ open, language, initialErrorCode, onClose }) {
             {status === 'loading-google' ? <LoaderCircle className="spinIcon" size={18} /> : <GoogleIcon />}
             {t.continueWithGoogle}
           </button>
-          <button className="watchaButton" type="button" onClick={handleWatchaSignIn} disabled={isLoading}>
-            {status === 'loading-watcha' ? <LoaderCircle className="spinIcon" size={18} /> : <WatchaIcon />}
-            {t.continueWithWatcha}
-          </button>
         </div>
         {message ? (
           <p className={cx('authMessage', status === 'error' && 'error', status === 'sent' && 'sent')}>
@@ -1307,7 +1287,7 @@ function AuthModal({ open, language, initialErrorCode, onClose }) {
   );
 }
 
-function UserMenu({ language, session, profile, onSignIn, onSignOut, onAdmin, onBilling, onAccount, onFavorites }) {
+function UserMenu({ language, session, profile, onSignIn, onSignOut, onAccount, onFavorites }) {
   const t = copy[language];
   const [open, setOpen] = useState(false);
   const ref = useDropdownDismiss(open, setOpen);
@@ -1324,7 +1304,6 @@ function UserMenu({ language, session, profile, onSignIn, onSignOut, onAdmin, on
   const email = profile?.email || session.user?.email || t.account;
   const displayName = profile?.fullName || session.user?.user_metadata?.name || email;
   const avatarUrl = profile?.avatarUrl || session.user?.user_metadata?.avatar_url || session.user?.user_metadata?.picture || '';
-  const totalSpent = Number(profile?.usage?.totalGenerationCredits || 0);
 
   return (
     <div className="dropdownControl userMenu" ref={ref}>
@@ -1350,27 +1329,6 @@ function UserMenu({ language, session, profile, onSignIn, onSignOut, onAdmin, on
               <span>{email}</span>
             </div>
           </div>
-          <div className="userStats">
-            {profile?.isSuperAdmin ? (
-              <span className="userStat admin">
-                <ShieldCheck size={15} />
-                {t.superAdmin}
-              </span>
-            ) : null}
-            <span className="userStat">
-              <Coins size={15} />
-              {profile?.creditBalance || 0} {t.credits}
-            </span>
-            <span className="userStat">
-              <Crown size={15} />
-              {formatMembershipStatus(profile?.membership, language)}
-            </span>
-            <span className="userStat">
-              <ReceiptText size={15} />
-              {t.totalGenerationCredits}: {totalSpent}
-            </span>
-          </div>
-          <div className="dropdownDivider" />
           <button
             className="dropdownAction"
             type="button"
@@ -1395,32 +1353,6 @@ function UserMenu({ language, session, profile, onSignIn, onSignOut, onAdmin, on
             <Heart size={17} />
             {t.myFavorites}
           </button>
-          <button
-            className="dropdownAction"
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onBilling();
-            }}
-          >
-            <CreditCard size={17} />
-            {t.membershipCenter}
-          </button>
-          {profile?.isSuperAdmin ? (
-            <button
-              className="dropdownAction"
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onAdmin();
-              }}
-            >
-              <ShieldCheck size={17} />
-              {t.adminPanel}
-            </button>
-          ) : null}
           <button
             className="dropdownAction danger"
             type="button"
@@ -1575,28 +1507,7 @@ function AccountPanel({
 
           <section className="accountOverview">
             <h3>{t.accountOverview}</h3>
-            <div className="accountMetrics">
-              <div>
-                <span>{t.creditBalance}</span>
-                <strong>{profile?.creditBalance || 0}</strong>
-              </div>
-              <div>
-                <span>{t.currentPlan}</span>
-                <strong>{formatMembershipStatus(profile?.membership, language)}</strong>
-              </div>
-              <div>
-                <span>{t.totalGenerations}</span>
-                <strong>{Number(usage.totalGenerations || 0)}</strong>
-              </div>
-              <div>
-                <span>{t.totalGenerationCredits}</span>
-                <strong>{Number(usage.totalGenerationCredits || 0)}</strong>
-              </div>
-            </div>
-            <button className="portalButton accountBillingButton" type="button" onClick={onBilling}>
-              <CreditCard size={16} />
-              {t.membershipCenter}
-            </button>
+            <p>{language === 'zh' ? '这是仅供团队成员使用的共享生图工作台。' : 'This is a shared image-generation workspace for your team.'}</p>
           </section>
         </div>
 
@@ -1630,27 +1541,6 @@ function AccountPanel({
           )}
         </section>
 
-        <section className="transactionSection accountTransactions">
-          <h3>
-            <ReceiptText size={18} />
-            {t.generationUsage}
-          </h3>
-          {generationTransactions.length ? (
-            <div className="transactionList">
-              {generationTransactions.map((transaction) => (
-                <TransactionItem
-                  transaction={transaction}
-                  language={language}
-                  casesById={casesById}
-                  onOpenCase={onOpenCase}
-                  key={transaction.id}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="emptyTransactions">{t.noGenerationTransactions}</p>
-          )}
-        </section>
       </section>
     </div>
   );
@@ -3466,43 +3356,6 @@ function App() {
     setAccountInitialSection('overview');
   }
 
-  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
-  const isCommunityRoute = normalizedPath === '/community' || normalizedPath === '/community/result';
-
-  if (isCommunityRoute) {
-    return (
-      <main>
-        <CommunityPage
-          language={language}
-          setLanguage={setLanguage}
-          authReady={authReady}
-          session={session}
-          profile={profile}
-          onSignIn={openAuth}
-          onSignOut={handleSignOut}
-          onOpenAdmin={() => setAdminOpen(true)}
-        />
-        <AuthModal
-          open={authOpen}
-          language={language}
-          initialErrorCode={authErrorCode}
-          onClose={() => {
-            setAuthOpen(false);
-            setAuthErrorCode('');
-          }}
-        />
-        <AdminPanel
-          open={adminOpen}
-          language={language}
-          session={session}
-          casesById={casesById}
-          onClose={() => setAdminOpen(false)}
-          onOpenCase={handleOpenCaseFromAdmin}
-        />
-      </main>
-    );
-  }
-
   if (!siteData || !styleLibrary) {
     return (
       <main>
@@ -3526,7 +3379,6 @@ function App() {
             <a href="#gallery">{t.navCases}</a>
             <a href="#templates">{t.navTemplates}</a>
             <a href="#agent-skill">{t.navSkill}</a>
-            <CommunityNavItem language={language} />
             <a
               className="sponsorNavLink"
               href={sponsorUrl}
@@ -3536,9 +3388,6 @@ function App() {
             >
               <Heart size={16} />
               {t.navSponsor}
-            </a>
-            <a href={membershipUrl} target="_blank" rel="noreferrer">
-              {t.navMembership}
             </a>
             <a href={repoUrl} target="_blank" rel="noreferrer">
               GitHub
@@ -3553,11 +3402,6 @@ function App() {
             onSignOut={handleSignOut}
             onAccount={() => handleOpenAccount('overview')}
             onFavorites={() => handleOpenAccount('favorites')}
-            onAdmin={() => setAdminOpen(true)}
-            onBilling={() => {
-              setBillingNotice('');
-              setBillingOpen(true);
-            }}
           />
         </div>
       </header>
@@ -3694,10 +3538,7 @@ function App() {
         onCopyText={copyText}
         onToggleFavorite={handleToggleFavorite}
         onAuthRequired={openAuth}
-        onBillingRequired={() => {
-          setBillingNotice(t.creditsRequired);
-          setBillingOpen(true);
-        }}
+        onBillingRequired={() => {}}
         onProfileChange={handleProfileChange}
       />
       <AuthModal
@@ -3720,11 +3561,6 @@ function App() {
         onClose={handleCloseAccount}
         onProfileChange={handleProfileChange}
         onOpenCase={handleOpenCaseFromAccount}
-        onBilling={() => {
-          setAccountOpen(false);
-          setBillingNotice('');
-          setBillingOpen(true);
-        }}
       />
       <AdminPanel
         open={adminOpen}

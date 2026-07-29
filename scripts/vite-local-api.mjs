@@ -1,16 +1,7 @@
 const routeLoaders = new Map([
-  ['/api/community/config', () => import('../api/community/config.js')],
-  ['/api/community/status', () => import('../api/community/status.js')],
-  ['/api/community/qr', () => import('../api/community/qr.js')],
-  ['/api/community/alipay/checkout', () => import('../api/community/alipay/checkout.js')],
-  ['/api/community/alipay/close', () => import('../api/community/alipay/close.js')],
-  ['/api/community/alipay/query', () => import('../api/community/alipay/query.js')],
-  ['/api/community/alipay/notify', () => import('../api/community/alipay/notify.js')],
-  ['/api/admin/community/orders', () => import('../api/admin/community/orders.js')],
-  ['/api/admin/community/qr', () => import('../api/admin/community/qr.js')],
-  ['/api/admin/community/refund', () => import('../api/admin/community/refund.js')],
-  ['/api/admin/community/refund-query', () => import('../api/admin/community/refund-query.js')],
-  ['/api/admin/community/revoke', () => import('../api/admin/community/revoke.js')]
+  ['/api/generate-image', () => import('../api/generate-image.js')],
+  ['/api/me', () => import('../api/me.js')],
+  ['/api/favorites', () => import('../api/favorites.js')]
 ]);
 
 function sendJson(res, status, payload) {

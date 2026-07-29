@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getAuthContext } from './_lib/supabase.js';
-import { readJsonBody } from './_lib/billing.js';
 
 let validCaseIds;
 
@@ -82,7 +81,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     let body;
     try {
-      body = await readJsonBody(req);
+      body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString('utf8') || '{}') : req.body || {};
     } catch {
       return json(res, 400, { ok: false, error: 'INVALID_CASE' });
     }
