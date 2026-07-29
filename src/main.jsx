@@ -137,11 +137,19 @@ const copy = {
     authRequired: 'Sign in to generate a test image.',
     signIn: 'Sign in',
     signInTitle: 'Sign in to generate test images',
-    signInSubtitle: 'Use Google or Watcha to unlock image generation, credits, and membership features.',
+    signInSubtitle: 'Sign in with your studio email and password to generate images.',
     authRateLimited: 'Too many login attempts. Please wait a bit, then try again.',
-    googleNotConfigured: 'Google sign-in is not enabled yet.',
-    continueWithGoogle: 'Continue with Google',
-    continueWithWatcha: 'Continue with Watcha',
+    email: 'Email address',
+    password: 'Password',
+    confirmPassword: 'Confirm password',
+    signInWithPassword: 'Sign in',
+    createAccount: 'Create account',
+    noAccount: 'New to the studio?',
+    haveAccount: 'Already have an account?',
+    switchToSignUp: 'Create an account',
+    switchToSignIn: 'Sign in instead',
+    passwordMismatch: 'The two passwords do not match.',
+    signUpSuccess: 'Account created. Check your email if confirmation is enabled.',
     authNotConfigured: 'Login is not configured yet.',
     watchaNotConfigured: 'Watcha sign-in is not configured yet.',
     watchaSessionExpired: 'Watcha sign-in expired. Please try again.',
@@ -157,7 +165,7 @@ const copy = {
     saveProfile: 'Save profile',
     profileSaved: 'Profile saved.',
     profileUpdateFailed: 'Profile update failed. Please try again.',
-    googleAvatarSource: 'Avatar is synced from your login provider.',
+    googleAvatarSource: 'Your email address is used for signing in.',
     accountOverview: 'Account overview',
     totalGenerations: 'Generated tests',
     totalGenerationCredits: 'Credits spent',
@@ -357,11 +365,19 @@ const copy = {
     authRequired: '登录后即可生成测试图。',
     signIn: '登录',
     signInTitle: '登录后生成测试图',
-    signInSubtitle: '使用 Google 或观猹登录，解锁生图测试、积分和会员能力。',
+    signInSubtitle: '使用工作室邮箱和密码登录后即可生成图片。',
     authRateLimited: '登录尝试过于频繁，请稍后再试。',
-    googleNotConfigured: 'Google 登录还没有启用。',
-    continueWithGoogle: '使用 Google 登录',
-    continueWithWatcha: '使用观猹登录',
+    email: '邮箱地址',
+    password: '密码',
+    confirmPassword: '确认密码',
+    signInWithPassword: '登录',
+    createAccount: '创建账号',
+    noAccount: '还没有工作室账号？',
+    haveAccount: '已有账号？',
+    switchToSignUp: '创建账号',
+    switchToSignIn: '去登录',
+    passwordMismatch: '两次输入的密码不一致。',
+    signUpSuccess: '账号已创建；如果开启了邮箱确认，请到邮箱完成确认。',
     authNotConfigured: '登录功能还没有完成配置。',
     watchaNotConfigured: '观猹登录还没有完成配置。',
     watchaSessionExpired: '观猹登录已过期，请重新尝试。',
@@ -377,7 +393,7 @@ const copy = {
     saveProfile: '保存资料',
     profileSaved: '资料已保存。',
     profileUpdateFailed: '资料保存失败，请稍后再试。',
-    googleAvatarSource: '头像会同步你的登录账号头像。',
+    googleAvatarSource: '邮箱地址将作为登录账号。',
     accountOverview: '账户概览',
     totalGenerations: '生成测试数',
     totalGenerationCredits: '已消耗积分',
@@ -1199,21 +1215,14 @@ function authRedirectErrorMessage(code, language) {
   return t.authError;
 }
 
-function GoogleIcon() {
-  return (
-    <svg className="googleIcon" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.71v2.25h2.91c1.7-1.57 2.69-3.89 2.69-6.6z" />
-      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.25c-.8.54-1.83.86-3.05.86-2.35 0-4.34-1.58-5.05-3.71H.94v2.33A9 9 0 0 0 9 18z" />
-      <path fill="#FBBC05" d="M3.95 10.72A5.41 5.41 0 0 1 3.67 9c0-.6.1-1.18.28-1.72V4.95H.94A9 9 0 0 0 0 9c0 1.45.34 2.82.94 4.05l3.01-2.33z" />
-      <path fill="#EA4335" d="M9 3.57c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .94 4.95l3.01 2.33C4.66 5.15 6.65 3.57 9 3.57z" />
-    </svg>
-  );
-}
-
 function AuthModal({ open, language, initialErrorCode, onClose }) {
   const t = copy[language];
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [mode, setMode] = useState('signIn');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   useBodyScrollLock(open);
 
   useEffect(() => {
@@ -1225,33 +1234,50 @@ function AuthModal({ open, language, initialErrorCode, onClose }) {
     }
     setStatus('idle');
     setMessage('');
+    setMode('signIn');
+    setPassword('');
+    setConfirmPassword('');
   }, [open, initialErrorCode, language]);
 
   if (!open) return null;
 
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const isLoading = status === 'loading-google';
+  const isLoading = status === 'loading';
 
-  async function handleGoogleSignIn() {
+  async function handleSubmit(event) {
+    event.preventDefault();
     if (!isSupabaseConfigured || !supabase) {
       setStatus('error');
       setMessage(t.authNotConfigured);
       return;
     }
 
-    setStatus('loading-google');
-    setMessage('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo
-      }
-    });
-
-    if (error) {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || !password) {
       setStatus('error');
-      setMessage(authErrorMessage(error, language));
+      setMessage(t.authError);
+      return;
     }
+    if (mode === 'signUp' && password !== confirmPassword) {
+      setStatus('error');
+      setMessage(t.passwordMismatch);
+      return;
+    }
+
+    setStatus('loading');
+    setMessage('');
+    const result = mode === 'signUp'
+      ? await supabase.auth.signUp({ email: normalizedEmail, password })
+      : await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+
+    if (result.error) {
+      setStatus('error');
+      setMessage(authErrorMessage(result.error, language));
+      return;
+    }
+
+    setStatus('sent');
+    setMessage(mode === 'signUp' && !result.data.session ? t.signUpSuccess : '');
+    if (result.data.session) onClose();
   }
 
   return (
@@ -1269,14 +1295,62 @@ function AuthModal({ open, language, initialErrorCode, onClose }) {
         <div className="authIcon">
           <UserCircle size={28} />
         </div>
-        <h2 id="auth-title">{t.signInTitle}</h2>
+        <h2 id="auth-title">{mode === 'signUp' ? t.createAccount : t.signInTitle}</h2>
         <p>{t.signInSubtitle}</p>
-        <div className="authProviders" aria-label={t.signInTitle}>
-          <button className="googleButton" type="button" onClick={handleGoogleSignIn} disabled={isLoading}>
-            {status === 'loading-google' ? <LoaderCircle className="spinIcon" size={18} /> : <GoogleIcon />}
-            {t.continueWithGoogle}
+        <form className="authForm" onSubmit={handleSubmit}>
+          <label>
+            <span>{t.email}</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+            />
+          </label>
+          <label>
+            <span>{t.password}</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+              minLength={6}
+              required
+            />
+          </label>
+          {mode === 'signUp' ? (
+            <label>
+              <span>{t.confirmPassword}</span>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+            </label>
+          ) : null}
+          <button className="authSubmit" type="submit" disabled={isLoading}>
+            {isLoading ? <LoaderCircle className="spinIcon" size={18} /> : <UserCircle size={18} />}
+            {mode === 'signUp' ? t.createAccount : t.signInWithPassword}
           </button>
-        </div>
+        </form>
+        <p className="authModeSwitch">
+          {mode === 'signUp' ? t.haveAccount : t.noAccount}
+          <button
+            type="button"
+            onClick={() => {
+              setMode((current) => current === 'signUp' ? 'signIn' : 'signUp');
+              setStatus('idle');
+              setMessage('');
+              setConfirmPassword('');
+            }}
+          >
+            {mode === 'signUp' ? t.switchToSignIn : t.switchToSignUp}
+          </button>
+        </p>
         {message ? (
           <p className={cx('authMessage', status === 'error' && 'error', status === 'sent' && 'sent')}>
             {message}
